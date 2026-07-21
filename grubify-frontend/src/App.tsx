@@ -6,11 +6,13 @@ import { Container } from '@mui/material';
 
 // Components
 import Navbar from './components/Navbar';
+import GlobalErrorHandler from './components/GlobalErrorHandler';
 import HomePage from './pages/HomePage';
 import RestaurantPage from './pages/RestaurantPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
+import ErrorPage from './pages/ErrorPage';
 import './App.css';
 
 const theme = createTheme({
@@ -56,6 +58,7 @@ function App() {
       <CssBaseline />
       <Router>
         <div className="App">
+          <GlobalErrorHandler />
           <Navbar />
           <Container maxWidth="xl" sx={{ mt: 3, mb: 3 }}>
             <Routes>
@@ -64,6 +67,7 @@ function App() {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/order-tracking/:orderId" element={<OrderTrackingPage />} />
+              <Route path="/error" element={<ErrorPage />} />
             </Routes>
           </Container>
         </div>

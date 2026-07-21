@@ -8,6 +8,7 @@ import {
   UpdateCartItemRequest,
   PlaceOrderRequest
 } from '../types';
+import { emitServerError } from '../utils/errorBus';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5291/api';
 
@@ -17,6 +18,31 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Header used to opt individual requests out of the global error page,
+// for cases where a component already renders its own dedicated error UI
+// (e.g. CheckoutPage's payment failure card).
+const SUPPRESS_GLOBAL_ERROR_HEADER = 'X-Suppress-Global-Error';
+
+// Any 5xx response (or a request that never received a response, e.g. the
+// API crashed/unreachable) is treated as a server error. Instead of letting
+// it fail silently, notify the app so a dedicated error page can be shown.
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const status = error.response?.status;
+    const suppressGlobalError = error.config?.headers?.[SUPPRESS_GLOBAL_ERROR_HEADER] === 'true';
+
+    if (!suppressGlobalError && (!error.response || (status && status >= 500))) {
+      const data = error.response?.data;
+      const message =
+        (data && (data.message || data.error)) ||
+        'The server encountered a problem processing your request. Please try again later.';
+      emitServerError({ message, status });
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const restaurantService = {
   getAll: (): Promise<Restaurant[]> => 
@@ -75,8 +101,11 @@ export const cartService = {
 };
 
 export const orderService = {
+  // Suppresses the global error page: CheckoutPage renders its own dedicated
+  // payment error UI when order placement returns a 500.
   place: (order: PlaceOrderRequest): Promise<Order> => 
-    api.post('/orders', order).then(response => response.data),
+    api.post('/orders', order, { headers: { [SUPPRESS_GLOBAL_ERROR_HEADER]: 'true' } })
+      .then(response => response.data),
   
   getById: (id: number): Promise<Order> => 
     api.get(`/orders/${id}`).then(response => response.data),
