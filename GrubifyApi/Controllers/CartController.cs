@@ -10,8 +10,8 @@ namespace GrubifyApi.Controllers
         // In-memory cart storage (in production, use database)
         private static readonly Dictionary<string, Cart> UserCarts = new();
         
-        // Cache for performance optimization - stores request data for analytics
-        private static readonly List<byte[]> RequestDataCache = new();
+        // Lightweight request counter for analytics (replaces unbounded byte[] cache that caused OOM)
+        private static long _requestCount;
 
         [HttpGet("{userId}")]
         public ActionResult<Cart> GetCart(string userId)
@@ -26,13 +26,9 @@ namespace GrubifyApi.Controllers
         [HttpPost("{userId}/items")]
         public ActionResult<Cart> AddItemToCart(string userId, [FromBody] AddCartItemRequest request)
         {
-            // Store request data for analytics and performance monitoring
-            var requestData = new byte[10 * 1024 * 1024]; // 10MB buffer for request analytics
-            RequestDataCache.Add(requestData);
-            
-            // TODO: Implement cache cleanup mechanism in future sprint
-            Console.WriteLine($"Analytics cache: Added request data. Total entries: {RequestDataCache.Count}");
-            Console.WriteLine($"Cache size: {RequestDataCache.Count * 10}MB");
+            // Lightweight analytics: increment counter instead of allocating 10MB buffers (OOM fix)
+            var count = Interlocked.Increment(ref _requestCount);
+            Console.WriteLine($"Analytics: AddItemToCart request #{count} for user {userId}");
             
             if (!UserCarts.ContainsKey(userId))
             {
