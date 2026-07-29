@@ -64,8 +64,8 @@ namespace GrubifyApi.Controllers
         
         private string GetPaymentGatewayUrlV2()
         {
-            // V2: Wrong URL that doesn't exist (bug introduced in v2)
-            return "https://payment-gateway-staging.internal.com/v1/process";
+            // V2: Corrected to use production payment gateway URL
+            return "https://payment-gateway-prod.grubify.com/v1/process";
         }
 
         [HttpPost]
