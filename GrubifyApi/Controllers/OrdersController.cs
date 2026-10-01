@@ -25,35 +25,17 @@ namespace GrubifyApi.Controllers
 
         private PaymentResult ProcessPayment(string paymentMethod)
         {
-            if (_isV2Version)
-            {
-                // V2: BUG - Payment gateway configuration is incorrect in production
-                // This was supposed to be fixed in the last deployment but got missed
-                var gatewayUrl = GetPaymentGatewayUrlV2();
-                
-                Console.WriteLine($"V2: Attempting payment processing with gateway: {gatewayUrl}");
-                
-                // Connection always fails due to wrong endpoint
-                return new PaymentResult 
-                { 
-                    Success = false, 
-                    ErrorMessage = "Connection to payment gateway timed out" 
-                };
-            }
-            else
-            {
-                // V1: Working payment processing
-                var gatewayUrl = GetPaymentGatewayUrlV1();
-                
-                Console.WriteLine($"V1: Processing payment successfully with gateway: {gatewayUrl}");
-                
-                // Simulate successful payment processing
-                return new PaymentResult 
-                { 
-                    Success = true, 
-                    ErrorMessage = string.Empty 
-                };
-            }
+            // Both V1 and V2 now use the correct production payment gateway
+            var gatewayUrl = _isV2Version ? GetPaymentGatewayUrlV2() : GetPaymentGatewayUrlV1();
+            
+            Console.WriteLine($"{(_isV2Version ? "V2" : "V1")}: Processing payment with gateway: {gatewayUrl}");
+            
+            // Simulate successful payment processing
+            return new PaymentResult 
+            { 
+                Success = true, 
+                ErrorMessage = string.Empty 
+            };
         }
 
         private string GetPaymentGatewayUrlV1()
@@ -64,8 +46,8 @@ namespace GrubifyApi.Controllers
         
         private string GetPaymentGatewayUrlV2()
         {
-            // V2: Wrong URL that doesn't exist (bug introduced in v2)
-            return "https://payment-gateway-staging.internal.com/v1/process";
+            // V2: Fixed — use the same production payment gateway as V1
+            return "https://payment-gateway-prod.grubify.com/v1/process";
         }
 
         [HttpPost]
