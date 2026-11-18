@@ -9,9 +9,13 @@ namespace GrubifyApi.Controllers
     {
         // In-memory cart storage (in production, use database)
         private static readonly Dictionary<string, Cart> UserCarts = new();
-        
-        // Cache for performance optimization - stores request data for analytics
-        private static readonly List<byte[]> RequestDataCache = new();
+
+        private readonly ILogger<CartController> _logger;
+
+        public CartController(ILogger<CartController> logger)
+        {
+            _logger = logger;
+        }
 
         [HttpGet("{userId}")]
         public ActionResult<Cart> GetCart(string userId)
@@ -26,14 +30,15 @@ namespace GrubifyApi.Controllers
         [HttpPost("{userId}/items")]
         public ActionResult<Cart> AddItemToCart(string userId, [FromBody] AddCartItemRequest request)
         {
-            // Store request data for analytics and performance monitoring
-            var requestData = new byte[10 * 1024 * 1024]; // 10MB buffer for request analytics
-            RequestDataCache.Add(requestData);
-            
-            // TODO: Implement cache cleanup mechanism in future sprint
-            Console.WriteLine($"Analytics cache: Added request data. Total entries: {RequestDataCache.Count}");
-            Console.WriteLine($"Cache size: {RequestDataCache.Count * 10}MB");
-            
+            // NOTE: a previous "analytics cache" allocated a 10MB byte[] per request into a
+            // static, never-cleared List<byte[]>. After ~74 requests the GC heap hard limit
+            // (~75% of the 1Gi container) was reached and every request failed with
+            // OutOfMemoryException -> HTTP 500 (INC0010002). Request analytics must be emitted
+            // as telemetry (structured logs / metrics), never retained in process memory.
+            _logger.LogInformation(
+                "Cart add: user={UserId} foodItemId={FoodItemId} quantity={Quantity}",
+                userId, request.FoodItemId, request.Quantity);
+
             if (!UserCarts.ContainsKey(userId))
             {
                 UserCarts[userId] = new Cart { UserId = userId };
